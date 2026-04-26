@@ -1,12 +1,9 @@
 import robotica
 import time
 
+estado = "INICIO"
 iniciado = False
 
-
-# =========================
-# HELPERS
-# =========================
 def cerca(x, umbral=0.5):
     return max(0, min(1, (umbral - x) / umbral))
 
@@ -25,48 +22,40 @@ def defuzz(reglas):
     return num / den if den > 0 else 0
 
 
-# =========================
-# CONTROL
-# =========================
+
 def control(readings):
-    global iniciado
+    global estado, iniciado
 
     front      = min(readings[3], readings[4])
     front_r    = readings[5]
     right      = readings[6]
     right_diag = readings[7]
     back_right = readings[0]
+    left       = min(readings[1], readings[2])
 
-    # =========================
-    # 🚨 EMERGENCIA
-    # =========================
+    # estado de inicio
     if min(front, front_r) < 0.25:
+        estado = "INICIO"
         return -0.7, 1.3
 
-    # =========================
-    # 🟡 INICIO
-    # =========================
-    if not iniciado:
+    if estado == "INICIO":
+
         if right < 1.2 or right_diag < 1.2:
-            iniciado = True
-        else:
-            return 0.7, 0.65
+            estado = "SEGUIR"
+            return 0.85, 0.8
 
-    # =========================
-    # 📉 SIN PARED
-    # =========================
-    wall_presence = (
-        (1 - lejos(right)) +
-        (1 - lejos(right_diag)) +
-        (1 - lejos(back_right))
-    ) / 3
+        corr = (left - right) * 0.12
+        base = 0.78
 
-    if wall_presence < 0.2:
-        return 1.0, 0.5  # 🔥 más rápido en vacío
+        lspeed = base - corr
+        rspeed = base + corr
 
-    # =========================
-    # 🚀 VELOCIDAD BASE (↑ MÁS RÁPIDO)
-    # =========================
+        lspeed = max(min(lspeed, 0.9), 0.6)
+        rspeed = max(min(rspeed, 0.9), 0.6)
+
+        return lspeed, rspeed
+
+    # velocidades
     front_avg = (front + front_r) / 2
 
     vel = defuzz([
@@ -75,12 +64,9 @@ def control(readings):
         (cerca(front_avg, 0.6), 0.6),
     ])
 
-    # 🔥 boost general de velocidad
     vel *= 1.25
 
-    # =========================
-    # 🧠 SENSOR FUSION
-    # =========================
+
     right_f = (
         0.45 * right +
         0.35 * right_diag +
@@ -90,9 +76,7 @@ def control(readings):
     target = 0.45
     error = right_f - target
 
-    # =========================
-    # 🧭 ANTICIPACIÓN
-    # =========================
+    #esquinas
     corner_avoid = (1 - lejos(front_r, 0.8))
     error += corner_avoid * 0.25
 
@@ -101,23 +85,12 @@ def control(readings):
     if abs(error) < 0.03:
         error = 0
 
-    # =========================
-    # 🧭 GIRO (más agresivo para velocidad alta)
-    # =========================
-    giro = error * 1.15   # 🔥 más reacción
-
+    giro = error * 1.15
     giro = max(min(giro, 0.42), -0.42)
 
-    # =========================
-    # 🚗 VELOCIDAD FINAL
-    # =========================
     vel = vel * (1 - abs(giro) * 0.22)
+    vel = max(min(vel, 1.85), 0.55)
 
-    vel = max(min(vel, 1.85), 0.55)  # 🔥 MÁS VELOCIDAD FINAL
-
-    # =========================
-    # 🛞 SALIDA
-    # =========================
     lspeed = vel + giro
     rspeed = vel - giro
 
@@ -127,12 +100,9 @@ def control(readings):
     return lspeed, rspeed
 
 
-# =========================
-# MAIN
-# =========================
 def main():
-    global iniciado
-    iniciado = False
+    global estado
+    estado = "INICIO"
 
     coppelia = robotica.Coppelia()
     robot = robotica.P3DX(coppelia.sim, 'PioneerP3DX')
