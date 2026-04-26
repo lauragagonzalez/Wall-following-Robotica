@@ -10,29 +10,16 @@ import time
 import numpy as np
 
 
-# =========================
-# Parámetros generales
-# =========================
 
 DT = 0.05
 EPISODE_TIME = 6.0
-
 D_REF = 0.2
-
 MAX_SENSOR_DIST = 1.0
 COLLISION_DIST = 0.12
-
 BASE_SPEED = 1.2
 TURN_GAIN = 1.2
-
 MAX_SPEED = 3.0
 MIN_SPEED = -3.0
-
-
-# =========================
-# Neuroevolución
-# =========================
-
 N_INPUTS = 5
 N_HIDDEN = 6
 N_OUTPUTS = 2
@@ -51,12 +38,6 @@ N_GENERATIONS = 15
 MUTATION_STD = 0.25
 
 
-# =========================
-# Posiciones iniciales
-# =========================
-# Formato: x, y, z, theta
-# Ajusta estas coordenadas a tu escena.
-
 INITIAL_POSES = [
     (1.46903, 1.50907, 0.13875, -1.57),
     (-1.55597, 0.30907, 0.13875, -1.57),
@@ -68,10 +49,8 @@ def clamp(value, low, high):
     return max(low, min(value, high))
 
 
-# =========================
-# Red neuronal
-# =========================
 
+# Red neuronal
 def create_individual():
     return np.random.randn(GENOME_SIZE) * 0.5
 
@@ -91,8 +70,6 @@ def decode_genome(genome):
     b2 = genome[idx:idx + N_OUTPUTS]
 
     return W1, b1, W2, b2
-
-
 def neural_policy(genome, sensors):
     W1, b1, W2, b2 = decode_genome(genome)
 
@@ -110,18 +87,14 @@ def neural_policy(genome, sensors):
     return left_speed, right_speed
 
 
-# =========================
-# Sensores
-# =========================
 
+# Sensores
 def normalize_distance(d):
     if d is None:
         d = MAX_SENSOR_DIST
 
     d = clamp(d, 0.0, MAX_SENSOR_DIST)
     return d / MAX_SENSOR_DIST
-
-
 def get_inputs(readings):
     """
     Sensores según lo que me dijiste:
@@ -169,10 +142,8 @@ def get_relevant_distances(readings):
     return front_dist, right_dist
 
 
-# =========================
-# Reset de simulación
-# =========================
 
+# Reset de simulación
 def reset_robot(coppelia, pose):
     """
     Reinicia la simulación y recoloca el robot.
@@ -216,10 +187,8 @@ def reset_robot(coppelia, pose):
     return robot
 
 
-# =========================
-# Evaluación
-# =========================
 
+# Evaluación
 def evaluate_trial(robot, genome):
     fitness = 0.0
     elapsed = 0.0
@@ -293,10 +262,8 @@ def evaluate_individual(coppelia, genome):
     return np.mean(trial_fitnesses)
 
 
-# =========================
-# Evolución
-# =========================
 
+# Evolución
 def mutate(genome):
     child = genome.copy()
     child += np.random.randn(GENOME_SIZE) * MUTATION_STD
@@ -322,11 +289,6 @@ def create_next_generation(population, fitnesses):
         new_population.append(child)
 
     return new_population
-
-
-# =========================
-# Main
-# =========================
 
 def main(args=None):
     coppelia = robotica.Coppelia()
